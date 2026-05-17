@@ -14,36 +14,48 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
         }
+        /* บังคับไม่ให้มี Scrollbar และจัดให้พอดีจอ 100% */
         body {
             font-family: 'Chakra Petch', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            margin: 0; padding: 15px;
-            height: 100vh; box-sizing: border-box;
-            display: flex; flex-direction: column;
+            margin: 0; 
+            padding: 15px;
+            width: 100vw;
+            height: 100vh; 
+            box-sizing: border-box;
+            display: flex; 
+            flex-direction: column;
+            overflow: hidden; 
         }
         header {
             text-align: left;
             padding-bottom: 10px;
             margin-bottom: 15px;
             border-bottom: 1px solid #334155;
-            display: flex; justify-content: space-between; align-items: flex-end;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-end;
+            height: 60px; /* ฟิกซ์ความสูงส่วนหัว */
         }
         header h1 { margin: 0; font-size: 2rem; color: #38bdf8; letter-spacing: 1px; }
         header span { color: var(--text-muted); font-size: 1rem; }
         
-        /* Dashboard Layout Grid */
+        /* จัด Layout ให้คำนวณความสูงที่เหลือจากการหัก Header ออก */
         .dashboard {
             display: grid;
             grid-template-columns: 2fr 1fr;
             grid-template-rows: auto 1fr;
             gap: 15px;
-            flex-grow: 1;
-            min-height: 0;
+            height: calc(100vh - 105px); 
         }
         .kpi-container {
             grid-column: 1 / -1;
-            display: flex; gap: 15px; overflow-x: auto;
+            display: flex; 
+            gap: 15px; 
+            /* หากมีกล่องเยอะให้ย่อขนาดลง ไม่ให้ล้นจอ */
+            flex-wrap: nowrap;
+            overflow: hidden; 
         }
         .panel {
             background-color: var(--card-bg);
@@ -52,14 +64,25 @@
             display: flex; flex-direction: column;
             border: 1px solid #334155;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            min-height: 0; /* สำคัญ: ป้องกันการขยายตัวทะลุ Grid */
         }
         .panel h3 { margin: 0 0 10px 0; font-size: 1.1rem; color: var(--text-muted); text-transform: uppercase; }
         
         .stat-box {
-            flex: 1; min-width: 150px;
+            flex: 1; 
+            min-width: 120px;
             background: rgba(255, 255, 255, 0.03);
             border-left: 5px solid;
-            border-radius: 8px; padding: 15px;
+            border-radius: 8px; 
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        /* ป้าย TOTAL สไตล์พิเศษ */
+        .total-box {
+            background: linear-gradient(135deg, rgba(56,189,248,0.1), rgba(52,211,153,0.1));
+            border-left: 5px solid #ffffff !important;
         }
         .stat-title { font-size: 1.2rem; font-weight: 600; color: #cbd5e1; text-transform: uppercase; }
         .stat-value { font-size: 3.5rem; font-weight: 700; margin-top: 5px; line-height: 1; }
@@ -67,11 +90,11 @@
         .chart-wrapper { position: relative; flex-grow: 1; min-height: 0; }
         canvas { width: 100% !important; height: 100% !important; }
         
-        /* ขวา: แบ่งเป็นบนล่าง */
         .side-panels {
             display: grid;
             grid-template-rows: 1fr 1fr;
             gap: 15px;
+            min-height: 0;
         }
     </style>
 </head>
@@ -121,15 +144,13 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Chart Global Settings
         Chart.defaults.font.family = "'Chakra Petch', sans-serif";
         Chart.defaults.color = '#94a3b8';
         const themeColors = ['#38bdf8', '#fb7185', '#facc15', '#34d399', '#c084fc', '#fb923c'];
 
         let currentTargets = [];
-        let sessionAccumulated = {}; // เก็บข้อมูลสะสมสำหรับทำกราฟโดนัท
+        let sessionAccumulated = {};
 
-        // Chart Instances
         let lineChart = new Chart(document.getElementById('lineChart').getContext('2d'), {
             type: 'line', data: { labels: [], datasets: [] },
             options: { responsive: true, maintainAspectRatio: false, tension: 0.3, plugins: { legend: { position: 'top' } } }
@@ -145,14 +166,19 @@
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '70%' }
         });
 
-        // -----------------------------------------
-        // Dynamic UI Builder
-        // -----------------------------------------
         function buildDashboardUI(targets) {
             currentTargets = targets;
             sessionAccumulated = {};
             const kpiPanel = document.getElementById('kpi-panel');
             kpiPanel.innerHTML = '';
+
+            // สร้างกล่อง TOTAL เป็นกล่องแรกเสมอ
+            const totalHtml = `
+                <div class="stat-box total-box">
+                    <div class="stat-title" style="color: #ffffff;">TOTAL (รวมทั้งหมด)</div>
+                    <div class="stat-value" id="val-total" style="color: #ffffff;">0</div>
+                </div>`;
+            kpiPanel.insertAdjacentHTML('beforeend', totalHtml);
 
             lineChart.data.datasets = [];
             barChart.data.labels = targets;
@@ -164,7 +190,6 @@
                 const color = themeColors[index % themeColors.length];
                 sessionAccumulated[target] = 0;
 
-                // Build KPI Boxes
                 const boxHtml = `
                     <div class="stat-box" style="border-color: ${color};">
                         <div class="stat-title">${target}</div>
@@ -172,7 +197,6 @@
                     </div>`;
                 kpiPanel.insertAdjacentHTML('beforeend', boxHtml);
 
-                // Build Line Dataset
                 lineChart.data.datasets.push({
                     label: target.toUpperCase(), data: [],
                     borderColor: color, backgroundColor: color + '22',
@@ -183,9 +207,6 @@
             [lineChart, barChart, doughnutChart].forEach(c => c.update());
         }
 
-        // -----------------------------------------
-        // Data Listener
-        // -----------------------------------------
         onValue(ref(db, 'object_counts'), (snapshot) => {
             const payload = snapshot.val();
             if (!payload) return;
@@ -201,20 +222,20 @@
             
             const timeLabel = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
             lineChart.data.labels.push(timeLabel);
-            if (lineChart.data.labels.length > 25) lineChart.data.labels.shift(); // เก็บเส้นกราฟ 25 จุดล่าสุด
+            if (lineChart.data.labels.length > 25) lineChart.data.labels.shift();
 
             let barData = [];
             let doughnutData = [];
+            let totalCount = 0; // ตัวแปรสำหรับเก็บผลรวม
 
             incomingTargets.forEach((target, index) => {
                 const count = counts[target] || 0;
-                sessionAccumulated[target] += count; // สะสมข้อมูลในเซสชัน
+                totalCount += count; // นำจำนวนมาบวกสะสม
+                sessionAccumulated[target] += count;
 
-                // Update KPI
                 const valElement = document.getElementById(`val-${target}`);
                 if (valElement) valElement.innerText = count;
 
-                // Update Line
                 lineChart.data.datasets[index].data.push(count);
                 if (lineChart.data.datasets[index].data.length > 25) lineChart.data.datasets[index].data.shift();
 
@@ -222,7 +243,10 @@
                 doughnutData.push(sessionAccumulated[target]);
             });
 
-            // Update Charts
+            // อัปเดตตัวเลขผลรวมลงในกล่อง TOTAL
+            const totalElement = document.getElementById('val-total');
+            if (totalElement) totalElement.innerText = totalCount;
+
             barChart.data.datasets[0].data = barData;
             doughnutChart.data.datasets[0].data = doughnutData;
             
