@@ -14,7 +14,6 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
         }
-        /* บังคับไม่ให้มี Scrollbar และจัดให้พอดีจอ 100% */
         body {
             font-family: 'Chakra Petch', sans-serif;
             background-color: var(--bg-color);
@@ -36,12 +35,11 @@
             display: flex; 
             justify-content: space-between; 
             align-items: flex-end;
-            height: 60px; /* ฟิกซ์ความสูงส่วนหัว */
+            height: 60px;
         }
         header h1 { margin: 0; font-size: 2rem; color: #38bdf8; letter-spacing: 1px; }
-        header span { color: var(--text-muted); font-size: 1rem; }
+        header span { color: #34d399; font-size: 1.2rem; font-weight: 600; letter-spacing: 1px; }
         
-        /* จัด Layout ให้คำนวณความสูงที่เหลือจากการหัก Header ออก */
         .dashboard {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -53,7 +51,6 @@
             grid-column: 1 / -1;
             display: flex; 
             gap: 15px; 
-            /* หากมีกล่องเยอะให้ย่อขนาดลง ไม่ให้ล้นจอ */
             flex-wrap: nowrap;
             overflow: hidden; 
         }
@@ -64,7 +61,7 @@
             display: flex; flex-direction: column;
             border: 1px solid #334155;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            min-height: 0; /* สำคัญ: ป้องกันการขยายตัวทะลุ Grid */
+            min-height: 0;
         }
         .panel h3 { margin: 0 0 10px 0; font-size: 1.1rem; color: var(--text-muted); text-transform: uppercase; }
         
@@ -79,7 +76,6 @@
             flex-direction: column;
             justify-content: center;
         }
-        /* ป้าย TOTAL สไตล์พิเศษ */
         .total-box {
             background: linear-gradient(135deg, rgba(56,189,248,0.1), rgba(52,211,153,0.1));
             border-left: 5px solid #ffffff !important;
@@ -102,7 +98,8 @@
 
     <header>
         <h1>LIVE DATA ANALYTICS</h1>
-        <span id="last-update">Waiting for data...</span>
+        <!-- เปลี่ยนป้ายแสดงเวลาให้สอดคล้องกับเวลาที่ผ่านไป -->
+        <span id="last-update">ELAPSED TIME: 00:00</span>
     </header>
 
     <div class="dashboard">
@@ -111,7 +108,7 @@
 
         <!-- 2. Main Line Chart -->
         <div class="panel">
-            <h3>📈 Real-time Trend (แนวโน้ม)</h3>
+            <h3>📈 Real-time Trend (แนวโน้มตามช่วงเวลา)</h3>
             <div class="chart-wrapper"><canvas id="lineChart"></canvas></div>
         </div>
 
@@ -150,6 +147,9 @@
 
         let currentTargets = [];
         let sessionAccumulated = {};
+        
+        // --- เพิ่มตัวแปรสำหรับเก็บเวลาเริ่มต้น ---
+        let startTimestamp = null; 
 
         let lineChart = new Chart(document.getElementById('lineChart').getContext('2d'), {
             type: 'line', data: { labels: [], datasets: [] },
@@ -172,7 +172,6 @@
             const kpiPanel = document.getElementById('kpi-panel');
             kpiPanel.innerHTML = '';
 
-            // สร้างกล่อง TOTAL เป็นกล่องแรกเสมอ
             const totalHtml = `
                 <div class="stat-box total-box">
                     <div class="stat-title" style="color: #ffffff;">TOTAL (รวมทั้งหมด)</div>
@@ -212,25 +211,43 @@
             if (!payload) return;
 
             const incomingTargets = payload.active_targets || [];
+            
+            // ถ้ารายการเป้าหมายเปลี่ยน (หรือเพิ่งรันระบบใหม่) ให้รีเซ็ตเวลาและวาดหน้าจอใหม่
             if (JSON.stringify(incomingTargets) !== JSON.stringify(currentTargets)) {
                 buildDashboardUI(incomingTargets);
+                startTimestamp = payload.timestamp; // จับเวลาเริ่มต้นใหม่
+            }
+
+            // ถ้ายังไม่มี startTimestamp (เช่น รีเฟรชหน้าเว็บกลางคัน) ให้เซ็ตเป็นเวลาของแพ็กเกจแรกที่ได้รับ
+            if (!startTimestamp) {
+                startTimestamp = payload.timestamp;
             }
 
             const counts = payload.data || {};
-            const now = new Date();
-            document.getElementById('last-update').innerText = `Last update: ${now.toLocaleTimeString()}`;
             
-            const timeLabel = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+            // --- ระบบคำนวณเวลาที่ผ่านไป (Elapsed Time เริ่มจาก 00:00) ---
+            let elapsedSeconds = Math.floor(payload.timestamp - startTimestamp);
+            if (elapsedSeconds < 0 || isNaN(elapsedSeconds)) elapsedSeconds = 0;
+
+            const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const secs = String(elapsedSeconds % 60).padStart(2, '0');
+            const timeLabel = `${mins}:${secs}`;
+
+            // อัปเดตตัวอักษรมุมขวาบน
+            document.getElementById('last-update').innerText = `ELAPSED TIME: ${timeLabel}`;
+            
+            // นำเวลา 00:xx ไปใส่เป็นแกน X ของกราฟ
             lineChart.data.labels.push(timeLabel);
             if (lineChart.data.labels.length > 25) lineChart.data.labels.shift();
+            // -------------------------------------------------------------
 
             let barData = [];
             let doughnutData = [];
-            let totalCount = 0; // ตัวแปรสำหรับเก็บผลรวม
+            let totalCount = 0; 
 
             incomingTargets.forEach((target, index) => {
                 const count = counts[target] || 0;
-                totalCount += count; // นำจำนวนมาบวกสะสม
+                totalCount += count; 
                 sessionAccumulated[target] += count;
 
                 const valElement = document.getElementById(`val-${target}`);
@@ -243,7 +260,6 @@
                 doughnutData.push(sessionAccumulated[target]);
             });
 
-            // อัปเดตตัวเลขผลรวมลงในกล่อง TOTAL
             const totalElement = document.getElementById('val-total');
             if (totalElement) totalElement.innerText = totalCount;
 
