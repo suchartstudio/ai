@@ -18,63 +18,39 @@
             font-family: 'Chakra Petch', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            margin: 0; 
-            padding: 15px;
-            width: 100vw;
-            height: 100vh; 
-            box-sizing: border-box;
-            display: flex; 
-            flex-direction: column;
-            overflow: hidden; 
+            margin: 0; padding: 15px;
+            width: 100vw; height: 100vh; 
+            box-sizing: border-box; display: flex; 
+            flex-direction: column; overflow: hidden; 
         }
         header {
-            text-align: left;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            text-align: left; padding-bottom: 10px; margin-bottom: 15px;
             border-bottom: 1px solid #334155;
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-end;
+            display: flex; justify-content: space-between; align-items: flex-end;
             height: 60px;
         }
         header h1 { margin: 0; font-size: 2rem; color: #38bdf8; letter-spacing: 1px; }
         header span { color: #34d399; font-size: 1.2rem; font-weight: 600; letter-spacing: 1px; }
         
         .dashboard {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            grid-template-rows: auto 1fr;
-            gap: 15px;
-            height: calc(100vh - 105px); 
+            display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: auto 1fr;
+            gap: 15px; height: calc(100vh - 105px); 
         }
         .kpi-container {
-            grid-column: 1 / -1;
-            display: flex; 
-            gap: 15px; 
-            flex-wrap: nowrap;
-            overflow: hidden; 
+            grid-column: 1 / -1; display: flex; gap: 15px; 
+            flex-wrap: nowrap; overflow: hidden; 
         }
         .panel {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 15px;
-            display: flex; flex-direction: column;
-            border: 1px solid #334155;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            min-height: 0;
+            background-color: var(--card-bg); border-radius: 12px; padding: 15px;
+            display: flex; flex-direction: column; border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); min-height: 0;
         }
         .panel h3 { margin: 0 0 10px 0; font-size: 1.1rem; color: var(--text-muted); text-transform: uppercase; }
         
         .stat-box {
-            flex: 1; 
-            min-width: 120px;
-            background: rgba(255, 255, 255, 0.03);
-            border-left: 5px solid;
-            border-radius: 8px; 
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            flex: 1; min-width: 120px; background: rgba(255, 255, 255, 0.03);
+            border-left: 5px solid; border-radius: 8px; padding: 15px;
+            display: flex; flex-direction: column; justify-content: center;
         }
         .total-box {
             background: linear-gradient(135deg, rgba(56,189,248,0.1), rgba(52,211,153,0.1));
@@ -85,20 +61,13 @@
         
         .chart-wrapper { position: relative; flex-grow: 1; min-height: 0; }
         canvas { width: 100% !important; height: 100% !important; }
-        
-        .side-panels {
-            display: grid;
-            grid-template-rows: 1fr 1fr;
-            gap: 15px;
-            min-height: 0;
-        }
+        .side-panels { display: grid; grid-template-rows: 1fr 1fr; gap: 15px; min-height: 0; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>LIVE DATA ANALYTICS</h1>
-        <!-- เปลี่ยนป้ายแสดงเวลาให้สอดคล้องกับเวลาที่ผ่านไป -->
+        <h1>ACCUMULATED ANALYTICS</h1>
         <span id="last-update">ELAPSED TIME: 00:00</span>
     </header>
 
@@ -108,14 +77,14 @@
 
         <!-- 2. Main Line Chart -->
         <div class="panel">
-            <h3>📈 Real-time Trend (แนวโน้มตามช่วงเวลา)</h3>
+            <h3>📈 Camera Activity (การเคลื่อนไหวผ่านกล้อง)</h3>
             <div class="chart-wrapper"><canvas id="lineChart"></canvas></div>
         </div>
 
         <!-- 3. Side Charts -->
         <div class="side-panels">
             <div class="panel">
-                <h3>📊 Current Distribution (สัดส่วนปัจจุบัน)</h3>
+                <h3>📊 Accumulated Distribution (เทียบยอดสะสม)</h3>
                 <div class="chart-wrapper"><canvas id="barChart"></canvas></div>
             </div>
             <div class="panel">
@@ -146,9 +115,6 @@
         const themeColors = ['#38bdf8', '#fb7185', '#facc15', '#34d399', '#c084fc', '#fb923c'];
 
         let currentTargets = [];
-        let sessionAccumulated = {};
-        
-        // --- เพิ่มตัวแปรสำหรับเก็บเวลาเริ่มต้น ---
         let startTimestamp = null; 
 
         let lineChart = new Chart(document.getElementById('lineChart').getContext('2d'), {
@@ -168,13 +134,12 @@
 
         function buildDashboardUI(targets) {
             currentTargets = targets;
-            sessionAccumulated = {};
             const kpiPanel = document.getElementById('kpi-panel');
             kpiPanel.innerHTML = '';
 
             const totalHtml = `
                 <div class="stat-box total-box">
-                    <div class="stat-title" style="color: #ffffff;">TOTAL (รวมทั้งหมด)</div>
+                    <div class="stat-title" style="color: #ffffff;">TOTAL (ยอดรวมสะสม)</div>
                     <div class="stat-value" id="val-total" style="color: #ffffff;">0</div>
                 </div>`;
             kpiPanel.insertAdjacentHTML('beforeend', totalHtml);
@@ -187,8 +152,6 @@
 
             targets.forEach((target, index) => {
                 const color = themeColors[index % themeColors.length];
-                sessionAccumulated[target] = 0;
-
                 const boxHtml = `
                     <div class="stat-box" style="border-color: ${color};">
                         <div class="stat-title">${target}</div>
@@ -212,56 +175,52 @@
 
             const incomingTargets = payload.active_targets || [];
             
-            // ถ้ารายการเป้าหมายเปลี่ยน (หรือเพิ่งรันระบบใหม่) ให้รีเซ็ตเวลาและวาดหน้าจอใหม่
             if (JSON.stringify(incomingTargets) !== JSON.stringify(currentTargets)) {
                 buildDashboardUI(incomingTargets);
-                startTimestamp = payload.timestamp; // จับเวลาเริ่มต้นใหม่
+                startTimestamp = payload.timestamp; 
             }
 
-            // ถ้ายังไม่มี startTimestamp (เช่น รีเฟรชหน้าเว็บกลางคัน) ให้เซ็ตเป็นเวลาของแพ็กเกจแรกที่ได้รับ
-            if (!startTimestamp) {
-                startTimestamp = payload.timestamp;
-            }
+            if (!startTimestamp) startTimestamp = payload.timestamp;
 
-            const counts = payload.data || {};
-            
-            // --- ระบบคำนวณเวลาที่ผ่านไป (Elapsed Time เริ่มจาก 00:00) ---
+            const currentCounts = payload.data || {};
+            const accumulatedCounts = payload.accumulated || {}; // ดึงยอดสะสมที่ Mac ส่งมา
+
             let elapsedSeconds = Math.floor(payload.timestamp - startTimestamp);
             if (elapsedSeconds < 0 || isNaN(elapsedSeconds)) elapsedSeconds = 0;
-
             const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
             const secs = String(elapsedSeconds % 60).padStart(2, '0');
             const timeLabel = `${mins}:${secs}`;
 
-            // อัปเดตตัวอักษรมุมขวาบน
             document.getElementById('last-update').innerText = `ELAPSED TIME: ${timeLabel}`;
             
-            // นำเวลา 00:xx ไปใส่เป็นแกน X ของกราฟ
             lineChart.data.labels.push(timeLabel);
             if (lineChart.data.labels.length > 25) lineChart.data.labels.shift();
-            // -------------------------------------------------------------
 
             let barData = [];
             let doughnutData = [];
-            let totalCount = 0; 
+            let totalAccCount = 0; 
 
             incomingTargets.forEach((target, index) => {
-                const count = counts[target] || 0;
-                totalCount += count; 
-                sessionAccumulated[target] += count;
+                const current = currentCounts[target] || 0;
+                const acc = accumulatedCounts[target] || 0;
+                totalAccCount += acc; 
 
+                // อัปเดตป้ายตัวเลขด้วยยอดสะสม (Accumulated)
                 const valElement = document.getElementById(`val-${target}`);
-                if (valElement) valElement.innerText = count;
+                if (valElement) valElement.innerText = acc;
 
-                lineChart.data.datasets[index].data.push(count);
+                // กราฟเส้นยังคงแสดง "จำนวนในกล้องปัจจุบัน" เพื่อให้เห็น Traffic
+                lineChart.data.datasets[index].data.push(current);
                 if (lineChart.data.datasets[index].data.length > 25) lineChart.data.datasets[index].data.shift();
 
-                barData.push(count);
-                doughnutData.push(sessionAccumulated[target]);
+                // กราฟแท่งและโดนัทแสดงยอดสะสม
+                barData.push(acc);
+                doughnutData.push(acc);
             });
 
+            // อัปเดตป้าย TOTAL
             const totalElement = document.getElementById('val-total');
-            if (totalElement) totalElement.innerText = totalCount;
+            if (totalElement) totalElement.innerText = totalAccCount;
 
             barChart.data.datasets[0].data = barData;
             doughnutChart.data.datasets[0].data = doughnutData;
