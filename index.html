@@ -3,100 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-time Object Dashboard</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <title>Analytics Dashboard | Object Detection</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         :root {
-            --bg-color: #121212;
-            --text-color: #ffffff;
-            --card-bg: #1e1e1e;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
         }
         body {
             font-family: 'Chakra Petch', sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            box-sizing: border-box;
-            aspect-ratio: 16/9;
+            color: var(--text-main);
+            margin: 0; padding: 15px;
+            height: 100vh; box-sizing: border-box;
+            display: flex; flex-direction: column;
         }
         header {
-            text-align: center;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: #ffffff;
-            letter-spacing: 2px;
+            text-align: left;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #334155;
+            display: flex; justify-content: space-between; align-items: flex-end;
         }
-        .container {
+        header h1 { margin: 0; font-size: 2rem; color: #38bdf8; letter-spacing: 1px; }
+        header span { color: var(--text-muted); font-size: 1rem; }
+        
+        /* Dashboard Layout Grid */
+        .dashboard {
             display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 20px;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 15px;
             flex-grow: 1;
+            min-height: 0;
         }
-        .summary-panel {
+        .kpi-container {
+            grid-column: 1 / -1;
+            display: flex; gap: 15px; overflow-x: auto;
+        }
+        .panel {
             background-color: var(--card-bg);
-            border-radius: 15px;
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            overflow-y: auto; /* หากเลือกวัตถุเยอะ จะสามารถเลื่อนดูได้ */
-        }
-        .stat-box {
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 15px;
-            text-align: center;
-            transition: all 0.3s ease;
+            display: flex; flex-direction: column;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        .stat-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #aaaaaa;
-            text-transform: uppercase;
+        .panel h3 { margin: 0 0 10px 0; font-size: 1.1rem; color: var(--text-muted); text-transform: uppercase; }
+        
+        .stat-box {
+            flex: 1; min-width: 150px;
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 5px solid;
+            border-radius: 8px; padding: 15px;
         }
-        .stat-value {
-            font-size: 4.5rem;
-            font-weight: 700;
-            margin-top: 5px;
-        }
-        .chart-panel {
-            background-color: var(--card-bg);
-            border-radius: 15px;
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        canvas {
-            width: 100% !important;
-            height: 100% !important;
+        .stat-title { font-size: 1.2rem; font-weight: 600; color: #cbd5e1; text-transform: uppercase; }
+        .stat-value { font-size: 3.5rem; font-weight: 700; margin-top: 5px; line-height: 1; }
+        
+        .chart-wrapper { position: relative; flex-grow: 1; min-height: 0; }
+        canvas { width: 100% !important; height: 100% !important; }
+        
+        /* ขวา: แบ่งเป็นบนล่าง */
+        .side-panels {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 15px;
         }
     </style>
 </head>
 <body>
 
-    <header>LIVE DYNAMIC DASHBOARD</header>
+    <header>
+        <h1>LIVE DATA ANALYTICS</h1>
+        <span id="last-update">Waiting for data...</span>
+    </header>
 
-    <div class="container">
-        <!-- ป้ายจะถูกสร้างอัตโนมัติด้วย Javascript -->
-        <div class="summary-panel" id="summary-panel">
-            <h3 style="text-align:center; color:#555;">กำลังรอข้อมูลจาก Mac mini...</h3>
+    <div class="dashboard">
+        <!-- 1. KPI Cards -->
+        <div class="kpi-container" id="kpi-panel"></div>
+
+        <!-- 2. Main Line Chart -->
+        <div class="panel">
+            <h3>📈 Real-time Trend (แนวโน้ม)</h3>
+            <div class="chart-wrapper"><canvas id="lineChart"></canvas></div>
         </div>
 
-        <div class="chart-panel">
-            <canvas id="historyChart"></canvas>
+        <!-- 3. Side Charts -->
+        <div class="side-panels">
+            <div class="panel">
+                <h3>📊 Current Distribution (สัดส่วนปัจจุบัน)</h3>
+                <div class="chart-wrapper"><canvas id="barChart"></canvas></div>
+            </div>
+            <div class="panel">
+                <h3>🍩 Session Proportion (สัดส่วนสะสม)</h3>
+                <div class="chart-wrapper"><canvas id="doughnutChart"></canvas></div>
+            </div>
         </div>
     </div>
 
@@ -113,116 +118,115 @@
             messagingSenderId: "953369646185",
             appId: "1:953369646185:web:d13363f9f07316e06ebef8"
         };
-
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // -----------------------------------------
-        // ตั้งค่า Chart.js เริ่มต้น
-        // -----------------------------------------
-        const ctx = document.getElementById('historyChart').getContext('2d');
+        // Chart Global Settings
         Chart.defaults.font.family = "'Chakra Petch', sans-serif";
-        Chart.defaults.color = '#ffffff';
+        Chart.defaults.color = '#94a3b8';
+        const themeColors = ['#38bdf8', '#fb7185', '#facc15', '#34d399', '#c084fc', '#fb923c'];
 
-        let historyChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: [], datasets: [] },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { labels: { font: { size: 16 } } } },
-                scales: {
-                    y: { beginAtZero: true, ticks: { font: { size: 14 } } },
-                    x: { ticks: { font: { size: 14 } } }
-                }
-            }
+        let currentTargets = [];
+        let sessionAccumulated = {}; // เก็บข้อมูลสะสมสำหรับทำกราฟโดนัท
+
+        // Chart Instances
+        let lineChart = new Chart(document.getElementById('lineChart').getContext('2d'), {
+            type: 'line', data: { labels: [], datasets: [] },
+            options: { responsive: true, maintainAspectRatio: false, tension: 0.3, plugins: { legend: { position: 'top' } } }
+        });
+
+        let barChart = new Chart(document.getElementById('barChart').getContext('2d'), {
+            type: 'bar', data: { labels: [], datasets: [] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        let doughnutChart = new Chart(document.getElementById('doughnutChart').getContext('2d'), {
+            type: 'doughnut', data: { labels: [], datasets: [] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '70%' }
         });
 
         // -----------------------------------------
-        // ระบบสร้าง UI อัตโนมัติ (Dynamic Builder)
+        // Dynamic UI Builder
         // -----------------------------------------
-        const MAX_DATA_POINTS = 20;
-        let currentTargets = [];
-        
-        // ชุดสี Neon สำหรับแยกประเภทวัตถุ
-        const themeColors = ['#00ffcc', '#ff3366', '#ffcc00', '#33ccff', '#cc33ff', '#ff9933'];
-
         function buildDashboardUI(targets) {
             currentTargets = targets;
-            const summaryPanel = document.getElementById('summary-panel');
-            summaryPanel.innerHTML = ''; // ล้างหน้าจอเดิม
+            sessionAccumulated = {};
+            const kpiPanel = document.getElementById('kpi-panel');
+            kpiPanel.innerHTML = '';
 
-            historyChart.data.datasets = []; // ล้างเส้นกราฟเดิม
-            historyChart.data.labels = [];
+            lineChart.data.datasets = [];
+            barChart.data.labels = targets;
+            barChart.data.datasets = [{ data: [], backgroundColor: themeColors }];
+            doughnutChart.data.labels = targets;
+            doughnutChart.data.datasets = [{ data: [], backgroundColor: themeColors, borderWidth: 0 }];
 
             targets.forEach((target, index) => {
                 const color = themeColors[index % themeColors.length];
+                sessionAccumulated[target] = 0;
 
-                // 1. สร้างกล่องตัวเลข (Big & Bold)
+                // Build KPI Boxes
                 const boxHtml = `
-                    <div class="stat-box" style="border-color: ${color}; background-color: ${color}11;">
+                    <div class="stat-box" style="border-color: ${color};">
                         <div class="stat-title">${target}</div>
                         <div class="stat-value" id="val-${target}" style="color: ${color};">0</div>
-                    </div>
-                `;
-                summaryPanel.insertAdjacentHTML('beforeend', boxHtml);
+                    </div>`;
+                kpiPanel.insertAdjacentHTML('beforeend', boxHtml);
 
-                // 2. สร้างเส้นกราฟใหม่
-                historyChart.data.datasets.push({
-                    label: target.toUpperCase(),
-                    data: [],
-                    borderColor: color,
-                    backgroundColor: color + '33', // เติมโปร่งแสงใต้กราฟ
-                    borderWidth: 3,
-                    tension: 0.3,
-                    fill: true
+                // Build Line Dataset
+                lineChart.data.datasets.push({
+                    label: target.toUpperCase(), data: [],
+                    borderColor: color, backgroundColor: color + '22',
+                    borderWidth: 2, fill: true
                 });
             });
-            historyChart.update();
+            lineChart.data.labels = [];
+            [lineChart, barChart, doughnutChart].forEach(c => c.update());
         }
 
         // -----------------------------------------
-        // รับข้อมูล Real-time จาก Firebase
+        // Data Listener
         // -----------------------------------------
-        const objectCountsRef = ref(db, 'object_counts');
-
-        onValue(objectCountsRef, (snapshot) => {
+        onValue(ref(db, 'object_counts'), (snapshot) => {
             const payload = snapshot.val();
             if (!payload) return;
 
             const incomingTargets = payload.active_targets || [];
-
-            // ตรวจสอบว่ามีการเปลี่ยนประเภทวัตถุจาก Mac mini หรือไม่?
-            // ถ้ามีการเริ่มรันระบบใหม่และเปลี่ยนวัตถุ ให้รีเซ็ตหน้าจอใหม่
             if (JSON.stringify(incomingTargets) !== JSON.stringify(currentTargets)) {
                 buildDashboardUI(incomingTargets);
             }
 
             const counts = payload.data || {};
-            
-            // สร้างเวลาแกน X
             const now = new Date();
+            document.getElementById('last-update').innerText = `Last update: ${now.toLocaleTimeString()}`;
+            
             const timeLabel = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
-            historyChart.data.labels.push(timeLabel);
-            if (historyChart.data.labels.length > MAX_DATA_POINTS) {
-                historyChart.data.labels.shift();
-            }
+            lineChart.data.labels.push(timeLabel);
+            if (lineChart.data.labels.length > 25) lineChart.data.labels.shift(); // เก็บเส้นกราฟ 25 จุดล่าสุด
 
-            // อัปเดตตัวเลขและเส้นกราฟตามเป้าหมาย
+            let barData = [];
+            let doughnutData = [];
+
             incomingTargets.forEach((target, index) => {
                 const count = counts[target] || 0;
-                
-                // อัปเดตตัวเลข
+                sessionAccumulated[target] += count; // สะสมข้อมูลในเซสชัน
+
+                // Update KPI
                 const valElement = document.getElementById(`val-${target}`);
                 if (valElement) valElement.innerText = count;
 
-                // อัปเดตกราฟ
-                historyChart.data.datasets[index].data.push(count);
-                if (historyChart.data.datasets[index].data.length > MAX_DATA_POINTS) {
-                    historyChart.data.datasets[index].data.shift();
-                }
+                // Update Line
+                lineChart.data.datasets[index].data.push(count);
+                if (lineChart.data.datasets[index].data.length > 25) lineChart.data.datasets[index].data.shift();
+
+                barData.push(count);
+                doughnutData.push(sessionAccumulated[target]);
             });
-            historyChart.update();
+
+            // Update Charts
+            barChart.data.datasets[0].data = barData;
+            doughnutChart.data.datasets[0].data = doughnutData;
+            
+            [lineChart, barChart, doughnutChart].forEach(c => c.update());
         });
     </script>
 </body>
