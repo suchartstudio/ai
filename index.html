@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-time Object Dashboard</title>
     
-    <!-- Google Font: Chakra Petch -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
     
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
@@ -18,7 +16,6 @@
             --bg-color: #121212;
             --text-color: #ffffff;
             --card-bg: #1e1e1e;
-            --highlight: #00ffcc;
         }
         body {
             font-family: 'Chakra Petch', sans-serif;
@@ -30,14 +27,15 @@
             flex-direction: column;
             height: 100vh;
             box-sizing: border-box;
-            aspect-ratio: 16/9; /* บังคับสัดส่วน 16:9 */
+            aspect-ratio: 16/9;
         }
         header {
             text-align: center;
             font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 20px;
-            color: var(--highlight);
+            color: #ffffff;
+            letter-spacing: 2px;
         }
         .container {
             display: grid;
@@ -52,24 +50,26 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            overflow-y: auto; /* หากเลือกวัตถุเยอะ จะสามารถเลื่อนดูได้ */
         }
         .stat-box {
-            background: rgba(0, 255, 204, 0.1);
-            border: 2px solid var(--highlight);
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid;
             border-radius: 10px;
-            padding: 20px;
+            padding: 15px;
             text-align: center;
+            transition: all 0.3s ease;
         }
         .stat-title {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             font-weight: 600;
             color: #aaaaaa;
+            text-transform: uppercase;
         }
         .stat-value {
-            font-size: 5rem; /* ตัวเลขขนาดใหญ่ มองเห็นชัดจากระยะไกล */
+            font-size: 4.5rem;
             font-weight: 700;
-            margin-top: 10px;
-            color: var(--highlight);
+            margin-top: 5px;
         }
         .chart-panel {
             background-color: var(--card-bg);
@@ -87,30 +87,23 @@
 </head>
 <body>
 
-    <header>LIVE OBJECT DETECTION DASHBOARD</header>
+    <header>LIVE DYNAMIC DASHBOARD</header>
 
     <div class="container">
-        <!-- ป้ายสรุปตัวเลขแบบ Big & Bold -->
+        <!-- ป้ายจะถูกสร้างอัตโนมัติด้วย Javascript -->
         <div class="summary-panel" id="summary-panel">
-            <div class="stat-box">
-                <div class="stat-title">PERSON (คน)</div>
-                <div class="stat-value" id="person-count">0</div>
-            </div>
+            <h3 style="text-align:center; color:#555;">กำลังรอข้อมูลจาก Mac mini...</h3>
         </div>
 
-        <!-- กราฟเส้นแสดงตามช่วงเวลา -->
         <div class="chart-panel">
             <canvas id="historyChart"></canvas>
         </div>
     </div>
 
-    <!-- โค้ด Firebase แบบ Modular (v12.13.0) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-database.js";
 
-        // ตั้งค่า Firebase ตามที่คุณให้มา
         const firebaseConfig = {
             apiKey: "AIzaSyBvXRATBf2x1Lq_JToL2rlQYOh8mK65tIU",
             authDomain: "suchartstudio-9a78d.firebaseapp.com",
@@ -118,84 +111,118 @@
             projectId: "suchartstudio-9a78d",
             storageBucket: "suchartstudio-9a78d.firebasestorage.app",
             messagingSenderId: "953369646185",
-            appId: "1:953369646185:web:d13363f9f07316e06ebef8",
-            measurementId: "G-2JKLSGCT00"
+            appId: "1:953369646185:web:d13363f9f07316e06ebef8"
         };
 
-        // เริ่มต้นการเชื่อมต่อ Firebase
         const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
         const db = getDatabase(app);
 
         // -----------------------------------------
-        // การตั้งค่ากราฟ Chart.js
+        // ตั้งค่า Chart.js เริ่มต้น
         // -----------------------------------------
         const ctx = document.getElementById('historyChart').getContext('2d');
         Chart.defaults.font.family = "'Chakra Petch', sans-serif";
         Chart.defaults.color = '#ffffff';
 
-        const historyChart = new Chart(ctx, {
+        let historyChart = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'จำนวนคน (Person)',
-                    data: [],
-                    borderColor: '#00ffcc',
-                    backgroundColor: 'rgba(0, 255, 204, 0.2)',
-                    borderWidth: 4,
-                    tension: 0.3,
-                    fill: true
-                }]
-            },
+            data: { labels: [], datasets: [] },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { labels: { font: { size: 18 } } }
-                },
+                plugins: { legend: { labels: { font: { size: 16 } } } },
                 scales: {
-                    y: { 
-                        beginAtZero: true,
-                        ticks: { font: { size: 16 } }
-                    },
-                    x: {
-                        ticks: { font: { size: 16 } }
-                    }
+                    y: { beginAtZero: true, ticks: { font: { size: 14 } } },
+                    x: { ticks: { font: { size: 14 } } }
                 }
             }
         });
 
         // -----------------------------------------
-        // การดึงข้อมูล Realtime จาก Firebase Database
+        // ระบบสร้าง UI อัตโนมัติ (Dynamic Builder)
         // -----------------------------------------
-        const MAX_DATA_POINTS = 20; // จำนวนจุดบนกราฟที่จะแสดงผล
-        const objectCountsRef = ref(db, 'object_counts'); // อ้างอิง Path ในฐานข้อมูล
+        const MAX_DATA_POINTS = 20;
+        let currentTargets = [];
+        
+        // ชุดสี Neon สำหรับแยกประเภทวัตถุ
+        const themeColors = ['#00ffcc', '#ff3366', '#ffcc00', '#33ccff', '#cc33ff', '#ff9933'];
 
-        // เมื่อมีข้อมูลอัปเดตที่ฝั่ง Mac mini, ฟังก์ชันนี้จะทำงานทันที
+        function buildDashboardUI(targets) {
+            currentTargets = targets;
+            const summaryPanel = document.getElementById('summary-panel');
+            summaryPanel.innerHTML = ''; // ล้างหน้าจอเดิม
+
+            historyChart.data.datasets = []; // ล้างเส้นกราฟเดิม
+            historyChart.data.labels = [];
+
+            targets.forEach((target, index) => {
+                const color = themeColors[index % themeColors.length];
+
+                // 1. สร้างกล่องตัวเลข (Big & Bold)
+                const boxHtml = `
+                    <div class="stat-box" style="border-color: ${color}; background-color: ${color}11;">
+                        <div class="stat-title">${target}</div>
+                        <div class="stat-value" id="val-${target}" style="color: ${color};">0</div>
+                    </div>
+                `;
+                summaryPanel.insertAdjacentHTML('beforeend', boxHtml);
+
+                // 2. สร้างเส้นกราฟใหม่
+                historyChart.data.datasets.push({
+                    label: target.toUpperCase(),
+                    data: [],
+                    borderColor: color,
+                    backgroundColor: color + '33', // เติมโปร่งแสงใต้กราฟ
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true
+                });
+            });
+            historyChart.update();
+        }
+
+        // -----------------------------------------
+        // รับข้อมูล Real-time จาก Firebase
+        // -----------------------------------------
+        const objectCountsRef = ref(db, 'object_counts');
+
         onValue(objectCountsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data && data.data) {
-                const counts = data.data;
-                const personCount = counts['person'] || 0;
-                
-                // 1. อัปเดตตัวเลขขนาดใหญ่บนหน้าเว็บ
-                document.getElementById('person-count').innerText = personCount;
+            const payload = snapshot.val();
+            if (!payload) return;
 
-                // 2. อัปเดตข้อมูลในกราฟ
-                const now = new Date();
-                const timeLabel = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
-                
-                historyChart.data.labels.push(timeLabel);
-                historyChart.data.datasets[0].data.push(personCount);
+            const incomingTargets = payload.active_targets || [];
 
-                // เลื่อนกราฟให้แสดงเฉพาะข้อมูล 20 รายการล่าสุด
-                if (historyChart.data.labels.length > MAX_DATA_POINTS) {
-                    historyChart.data.labels.shift();
-                    historyChart.data.datasets[0].data.shift();
-                }
-                historyChart.update();
+            // ตรวจสอบว่ามีการเปลี่ยนประเภทวัตถุจาก Mac mini หรือไม่?
+            // ถ้ามีการเริ่มรันระบบใหม่และเปลี่ยนวัตถุ ให้รีเซ็ตหน้าจอใหม่
+            if (JSON.stringify(incomingTargets) !== JSON.stringify(currentTargets)) {
+                buildDashboardUI(incomingTargets);
             }
+
+            const counts = payload.data || {};
+            
+            // สร้างเวลาแกน X
+            const now = new Date();
+            const timeLabel = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+            historyChart.data.labels.push(timeLabel);
+            if (historyChart.data.labels.length > MAX_DATA_POINTS) {
+                historyChart.data.labels.shift();
+            }
+
+            // อัปเดตตัวเลขและเส้นกราฟตามเป้าหมาย
+            incomingTargets.forEach((target, index) => {
+                const count = counts[target] || 0;
+                
+                // อัปเดตตัวเลข
+                const valElement = document.getElementById(`val-${target}`);
+                if (valElement) valElement.innerText = count;
+
+                // อัปเดตกราฟ
+                historyChart.data.datasets[index].data.push(count);
+                if (historyChart.data.datasets[index].data.length > MAX_DATA_POINTS) {
+                    historyChart.data.datasets[index].data.shift();
+                }
+            });
+            historyChart.update();
         });
     </script>
 </body>
