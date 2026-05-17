@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics Dashboard | Object Detection</title>
+    <title>10-Min Interval Analytics Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -67,25 +67,31 @@
 <body>
 
     <header>
-        <h1>ACCUMULATED TREND ANALYTICS</h1>
-        <span id="last-update">ELAPSED TIME: 00:00</span>
+        <h1>ACCUMULATED ANALYTICS (10-MIN INTERVAL)</h1>
+        <div style="display: flex; gap: 20px;">
+            <span id="next-tick" style="color: #facc15;">NEXT TICK IN: --:--</span>
+            <span id="last-update">ELAPSED TIME: 00:00</span>
+        </div>
     </header>
 
     <div class="dashboard">
+        <!-- 1. KPI Cards -->
         <div class="kpi-container" id="kpi-panel"></div>
 
+        <!-- 2. Main Line Chart (ตรึงแกนเวลาทุกๆ 10 นาที) -->
         <div class="panel">
-            <h3>📈 Fixed Timeline Trend (แนวโน้มสะสมตั้งแต่เริ่มต้น)</h3>
+            <h3>📈 10-Minute Trend Timeline (แนวโน้มสะสมราย 10 นาที)</h3>
             <div class="chart-wrapper"><canvas id="lineChart"></canvas></div>
         </div>
 
+        <!-- 3. Side Charts -->
         <div class="side-panels">
             <div class="panel">
-                <h3>📊 Accumulated Distribution (เทียบยอดสะสม)</h3>
+                <h3>📊 Current Distribution (เทียบยอดสะสมปัจจุบัน)</h3>
                 <div class="chart-wrapper"><canvas id="barChart"></canvas></div>
             </div>
             <div class="panel">
-                <h3>🍩 Session Proportion (สัดส่วนสะสม)</h3>
+                <h3>🍩 Session Proportion (สัดส่วนรวมสะสม)</h3>
                 <div class="chart-wrapper"><canvas id="doughnutChart"></canvas></div>
             </div>
         </div>
@@ -113,13 +119,14 @@
 
         let currentTargets = [];
         let startTimestamp = null; 
+        let loggedIntervals = new Set(); // ตรวจสอบไม่ให้บันทึกช่วงเวลาซ้ำบนกราฟเส้น
 
         let lineChart = new Chart(document.getElementById('lineChart').getContext('2d'), {
-            type: 'line', data: { labels: [], datasets: [] },
+            type: 'line', data: { labels: ['00:00'], datasets: [] }, // เริ่มต้นจุดแรกที่เวลา 00:00
             options: { 
                 responsive: true, maintainAspectRatio: false, tension: 0.1, 
                 plugins: { legend: { position: 'top' } },
-                scales: { x: { min: 0 } } // ตรึงให้แสดงตั้งแต่จุดเริ่มต้นเลข 0 เสมอ
+                scales: { x: { min: 0 } }
             }
         });
 
@@ -137,15 +144,18 @@
             currentTargets = targets;
             const kpiPanel = document.getElementById('kpi-panel');
             kpiPanel.innerHTML = '';
+            loggedIntervals.clear();
 
             const totalHtml = `
                 <div class="stat-box total-box">
-                    <div class="stat-title" style="color: #ffffff;">TOTAL (ยอดรวมสะสม)</div>
+                    <div class="stat-title" style="color: #ffffff;">TOTAL (รวมสะสม)</div>
                     <div class="stat-value" id="val-total" style="color: #ffffff;">0</div>
                 </div>`;
             kpiPanel.insertAdjacentHTML('beforeend', totalHtml);
 
             lineChart.data.datasets = [];
+            lineChart.data.labels = ['00:00']; // รีเซ็ตสเกลเวลาเริ่มต้น
+
             barChart.data.labels = targets;
             barChart.data.datasets = [{ data: [], backgroundColor: themeColors }];
             doughnutChart.data.labels = targets;
@@ -160,13 +170,13 @@
                     </div>`;
                 kpiPanel.insertAdjacentHTML('beforeend', boxHtml);
 
+                // ตั้งค่าจุดเริ่มต้นของกราฟเส้นในนาทีที่ 00:00 ให้เป็นเลข 0 รอไว้
                 lineChart.data.datasets.push({
-                    label: target.toUpperCase(), data: [],
+                    label: target.toUpperCase(), data: [0], 
                     borderColor: color, backgroundColor: color + '11',
                     borderWidth: 2, fill: true
                 });
             });
-            lineChart.data.labels = [];
             [lineChart, barChart, doughnutChart].forEach(c => c.update());
         }
 
@@ -182,34 +192,54 @@
 
             if (!startTimestamp) startTimestamp = payload.timestamp;
 
-            const currentCounts = payload.data || {};
             const accumulatedCounts = payload.accumulated || {}; 
 
+            // คำนวณเวลา Elapsed Time
             let elapsedSeconds = Math.floor(payload.timestamp - startTimestamp);
             if (elapsedSeconds < 0 || isNaN(elapsedSeconds)) elapsedSeconds = 0;
-            const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-            const secs = String(elapsedSeconds % 60).padStart(2, '0');
-            const timeLabel = `${mins}:${secs}`;
+            
+            let totalMinutes = Math.floor(elapsedSeconds / 60);
+            const minsStr = String(totalMinutes).padStart(2, '0');
+            const secsStr = String(elapsedSeconds % 60).padStart(2, '0');
+            const timeLabel = `${minsStr}:${secsStr}`;
 
             document.getElementById('last-update').innerText = `ELAPSED TIME: ${timeLabel}`;
             
-            // ใส่เวลาลงในฐานแกน X (ถอดคำสั่ง .shift() ออกทั้งหมด เพื่อตรึงจุดเริ่มต้นไว้คงที่)
-            lineChart.data.labels.push(timeLabel);
+            // --- ระบบคำนวณเวลานับถอยหลังเพื่อปักหมุดกราฟทุกๆ 10 นาที ---
+            let nextTickMinutes = (Math.floor(totalMinutes / 10) + 1) * 10;
+            let countdownSeconds = (nextTickMinutes * 60) - elapsedSeconds;
+            let cdMins = String(Math.floor(countdownSeconds / 60)).padStart(2, '0');
+            let cdSecs = String(countdownSeconds % 60).padStart(2, '0');
+            document.getElementById('next-tick').innerText = `NEXT TICK IN: ${cdMins}:${cdSecs}`;
+
+            // หาฐานเวลาช่วง 10 นาทีปัจจุบัน (เช่น ถ้าอยู่ที่นาทีที่ 12 จะได้ค่าช่วงลงล็อกคือ 10)
+            let currentIntervalBlock = Math.floor(totalMinutes / 10) * 10;
+            let currentIntervalLabel = String(currentIntervalBlock).padStart(2, '0') + ":00";
+
+            // ถ้าระบบเดินมาถึงบล็อก 10 นาทีใหม่ และยังไม่เคยบันทึกลงกราฟเส้น ให้ทำการปักหมุดข้อมูลลงแกนเวลา
+            if (currentIntervalBlock > 0 && !loggedIntervals.has(currentIntervalBlock)) {
+                loggedIntervals.add(currentIntervalBlock);
+                lineChart.data.labels.push(currentIntervalLabel);
+
+                incomingTargets.forEach((target, index) => {
+                    const acc = accumulatedCounts[target] || 0;
+                    lineChart.data.datasets[index].data.push(acc);
+                });
+                lineChart.update();
+            }
+            // -------------------------------------------------------------
 
             let barData = [];
             let doughnutData = [];
             let totalAccCount = 0; 
 
             incomingTargets.forEach((target, index) => {
-                const current = currentCounts[target] || 0;
                 const acc = accumulatedCounts[target] || 0;
                 totalAccCount += acc; 
 
+                // ป้ายดิจิทัล KPI และ กราฟวงกลมฝั่งขวา จะยังคงขยับแบบ Real-time ตามคลาสรถที่นับเพิ่มขึ้น
                 const valElement = document.getElementById(`val-${target}`);
                 if (valElement) valElement.innerText = acc;
-
-                // กราฟเส้นเปลี่ยนมาแสดง "ยอดสะสมเติบโตแบบต่อเนื่อง" ตาม Timeline ที่ตรึงไว้
-                lineChart.data.datasets[index].data.push(acc);
 
                 barData.push(acc);
                 doughnutData.push(acc);
@@ -221,7 +251,7 @@
             barChart.data.datasets[0].data = barData;
             doughnutChart.data.datasets[0].data = doughnutData;
             
-            [lineChart, barChart, doughnutChart].forEach(c => c.update());
+            [barChart, doughnutChart].forEach(c => c.update());
         });
     </script>
 </body>
